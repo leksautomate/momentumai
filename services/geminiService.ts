@@ -2,9 +2,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Slide, VisualStyle, AspectRatio } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-
+// Instantiating GoogleGenAI inside functions to ensure the latest API key is used
 export const generateScript = async (topic: string, slideCount: number, style: VisualStyle): Promise<{ slides: Partial<Slide>[], hashtags: string[] }> => {
+  // Use the API key directly from the environment
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const isSingle = slideCount === 1;
   const wordCountTarget = isSingle ? "exactly 400" : "under 300";
   
@@ -22,7 +23,7 @@ export const generateScript = async (topic: string, slideCount: number, style: V
        - Use frequent line breaks and short paragraphs for mobile readability.
        - Use bullet points for key facts or steps if relevant.
        - End with a clear "Engagement Hook" or question to drive comments.
-    4. IMAGE PROMPTS: Provide detailed, high-quality image prompts reflecting, and should be of battle scene "${style}".
+    4. IMAGE PROMPTS: Provide detailed, high-quality image prompts reflecting the narrative style: "${style}".
     5. METADATA: Provide exactly 15 high-reach hashtags.
 
     Return ONLY a JSON object:
@@ -30,7 +31,7 @@ export const generateScript = async (topic: string, slideCount: number, style: V
       "slides": [
         { "slideNumber": 1, "text": "...", "imagePrompt": "..." }
       ],
-      "hashtags": ["tag1", "tag2", ..., "tag10"]
+      "hashtags": ["tag1", "tag2", ..., "tag15"]
     }
   `;
 
@@ -64,10 +65,14 @@ export const generateScript = async (topic: string, slideCount: number, style: V
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  // Directly access .text property from response
+  const text = response.text || '{}';
+  return JSON.parse(text);
 };
 
 export const generateSlideImage = async (prompt: string, style: VisualStyle, aspectRatio: AspectRatio): Promise<string> => {
+  // Use the API key directly from the environment
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const stylePrefix = {
     [VisualStyle.NEWS]: "Photojournalism, sharp focus, vibrant, realistic, 8k resolution, documentary style. ",
     [VisualStyle.CINEMATIC]: "Cinematic movie scene, anamorphic lighting, moody atmosphere, highly detailed, film grain. ",
@@ -83,16 +88,18 @@ export const generateSlideImage = async (prompt: string, style: VisualStyle, asp
     },
     config: {
       imageConfig: {
-        aspectRatio: aspectRatio as any
+        aspectRatio: aspectRatio
       }
     }
   });
 
   let imageUrl = '';
+  // Iterating through parts to find the image part as per guidelines
   if (response.candidates?.[0]?.content?.parts) {
     for (const part of response.candidates[0].content.parts) {
       if (part.inlineData) {
-        imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        const base64EncodeString = part.inlineData.data;
+        imageUrl = `data:image/png;base64,${base64EncodeString}`;
         break;
       }
     }

@@ -29,6 +29,21 @@ const App: React.FC = () => {
   const handleGenerate = async () => {
     if (!topic.trim()) return;
 
+    // Check if API Key is selected as per instructions, using type casting to avoid global conflict
+    const aistudio = (window as any).aistudio;
+    if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
+      const hasKey = await aistudio.hasSelectedApiKey();
+      if (!hasKey) {
+        const confirm = window.confirm("You need to configure your Gemini API key to run this engine. Open configuration?");
+        if (confirm) {
+          await aistudio.openSelectKey();
+          // After openSelectKey, we assume success to avoid race conditions
+        } else {
+          return;
+        }
+      }
+    }
+
     try {
       setStatus({ step: 'scripting', message: 'Analyzing topic & engineering narrative bridges...', progress: 10 });
       setFeed(null);
@@ -75,8 +90,14 @@ const App: React.FC = () => {
       setStatus({ step: 'completed', message: 'Momentum Engineered!', progress: 100 });
       setTimeout(() => setStatus(prev => ({ ...prev, step: 'idle' })), 1500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Generation failed:", error);
+      // Reset key selection if entity not found error occurs
+      if (error?.message?.includes("Requested entity was not found")) {
+        alert("API Key error. Please re-configure your API key.");
+        const aistudio = (window as any).aistudio;
+        if (aistudio) await aistudio.openSelectKey();
+      }
       setStatus({ step: 'error', message: 'The engine stalled. Please try again.', progress: 0 });
       setTimeout(() => setStatus(prev => ({ ...prev, step: 'idle' })), 3000);
     }
@@ -262,7 +283,7 @@ const App: React.FC = () => {
 
                 <div className="glass-panel p-8 rounded-[3rem] border-white/10">
                   <div className="flex items-center justify-between mb-6">
-                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400 italic">Meta Bundle (10 Tags)</h4>
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400 italic">Meta Bundle (15 Tags)</h4>
                     <button 
                       onClick={() => handleCopy(hashtagText, 'Hashtags')}
                       className="text-[10px] font-black uppercase italic text-gray-400 hover:text-white underline underline-offset-4"
@@ -304,7 +325,7 @@ const App: React.FC = () => {
 
       <footer className="py-8 px-8 border-t border-white/5 text-center">
         <p className="text-[10px] uppercase font-black tracking-[0.2em] text-gray-600">
-          MomentumAI • Built for High-Retention Narrative Flow • 2024
+          MomentumAI • Built for High-Retention Narrative Flow • 2024 • Optimized for Facebook
         </p>
       </footer>
     </div>
